@@ -131,6 +131,11 @@ resetBtn.addEventListener('click',()=>{
     updateColors();
 });
 
+// === Aktualizacja kolorów przy zmianie inputów ===
+document.querySelectorAll('#editorPanel input[type=color]').forEach(input => {
+    input.addEventListener('input', updateColors);
+});
+
 // CANVAS I KULKI
 const canvas=document.getElementById('bgCanvas');
 const ctx=canvas.getContext('2d');
@@ -140,6 +145,9 @@ canvas.addEventListener('mousedown',e=>{mouse.down=true;mouse.x=e.clientX;mouse.
 canvas.addEventListener('mousemove',e=>{if(mouse.down){mouse.x=e.clientX;mouse.y=e.clientY;}});
 canvas.addEventListener('mouseup',e=>{mouse.down=false;});
 
+let bgColor1="#323232", bgColor2="#000000";
+let particleColor1="#aaaaaa", particleColor2="#555555";
+
 function updateColors(){
     bgColor1=document.getElementById('bgColor1').value;
     bgColor2=document.getElementById('bgColor2').value;
@@ -147,9 +155,6 @@ function updateColors(){
     particleColor2=document.getElementById('particleColor2').value;
     particles.forEach((p,i)=>{p.color=i%2===0? particleColor1 : particleColor2;});
 }
-
-let bgColor1="#323232", bgColor2="#000000";
-let particleColor1="#aaaaaa", particleColor2="#555555";
 
 class Particle{
     constructor(x,y,r){
@@ -202,6 +207,7 @@ function initCanvas(){
         let y=Math.random()*(canvas.height-2*r)+r;
         particles.push(new Particle(x,y,r));
     }
+    updateColors(); // ustaw od razu kolory startowe
 }
 
 function animate(){
@@ -209,6 +215,7 @@ function animate(){
     particles.forEach(p=>p.update());
     requestAnimationFrame(animate);
 }
+
 // Kliknięcie poza panelem chowa panel
 document.addEventListener('click', (e) => {
     if (!editorPanel.contains(e.target) && e.target !== editBtn) {
