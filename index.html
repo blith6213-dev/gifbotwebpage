@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GifBot</title>
+<style>
+body {
+    margin:0;
+    overflow:hidden;
+    background:#000;
+    font-family:Roboto, sans-serif;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    position:relative;
+}
+canvas {
+    position: fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    z-index:0;
+}
+.container {
+    position: relative;
+    z-index:1;
+    background:#2f3136;
+    padding:20px 30px 30px 30px;
+    border-radius:20px;
+    text-align:center;
+    width:350px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.5);
+}
+.logo {width:100px;height:100px;margin:0 auto;overflow:hidden;}
+.logo img {width:100%;height:100%;object-fit:cover;}
+.title {color:white;font-size:28px;font-weight:700;margin-top:10px;}
+.subtitle {color:#b9bbbe;font-size:18px;margin-bottom:20px;}
+.buttons {display:flex;justify-content:center;gap:15px;}
+.buttons a {text-decoration:none;padding:10px 20px;border-radius:8px;color:white;font-weight:bold;transition:0.3s;background:#5865f2;}
+.buttons a:hover {background:#4752c4;}
+#editBtn {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+}
+#editorPanel {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: 250px;
+    background:#2f3136;
+    border-radius:20px;
+    padding:15px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.5);
+    z-index:3;
+    transform: scale(0) translate(50px, -50px);
+    transform-origin: top right;
+    transition: transform 0.5s ease, opacity 0.5s ease;
+    opacity: 0;
+}
+#editorPanel.show {
+    transform: scale(1) translate(0,0);
+    opacity:1;
+}
+#editorPanel label { display:block; color:#fff; margin-top:10px; font-size:14px;}
+#editorPanel input[type=color] { width: 100%; height:30px; border:none; padding:0; margin-top:5px; cursor:pointer;}
+#resetBtn { display:block; margin-top:15px; text-align:center; color:#aaa; font-size:12px; cursor:pointer; }
+#consent {position: fixed;top:-60px;left:0;width:100%;background: rgba(200,200,200,0.85);color:#555;font-size:12px;display:flex;justify-content:space-between;align-items:center;padding:8px 20px;box-sizing:border-box;border-bottom-left-radius:10px;border-bottom-right-radius:10px;transition:0.5s;z-index:10;}
+#consent.show{top:0;}
+#consent .buttons{display:flex;gap:5px;}
+#consent button{padding:4px 10px;border:1px solid white;background:transparent;color:#555;border-radius:4px;cursor:pointer;font-size:12px;font-weight:bold;}
+</style>
+</head>
+<body>
+<div id="consent">
+    <span>© 2025 GifBot - wszystkie prawa zastrzeżone</span>
+    <div class="buttons">
+        <button id="accept">Akceptuj</button>
+        <button id="decline">Odrzuć</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="logo"><img src="gif.png" alt="GifBot Logo"></div>
+    <div class="title">GifBot</div>
+    <div class="subtitle">𝒙𝑹𝟐𝑫𝟐</div>
+    <div class="buttons">
+        <a href="https://discord.com/oauth2/authorize?client_id=1415403568000667808&permissions=8&scope=bot" target="_blank">Dodaj bota</a>
+        <a href="https://discord.com/users/1356285897288581340" target="_blank">Owner kontakt</a>
+    </div>
+</div>
+
+<img id="editBtn" src="edit.png" alt="Edit">
+
+<div id="editorPanel">
+    <label>Gradient tła - kolor 1<input type="color" id="bgColor1" value="#323232"></label>
+    <label>Gradient tła - kolor 2<input type="color" id="bgColor2" value="#000000"></label>
+    <label>Kolor kulek 1<input type="color" id="particleColor1" value="#aaaaaa"></label>
+    <label>Kolor kulek 2<input type="color" id="particleColor2" value="#555555"></label>
+    <div id="resetBtn">Reset</div>
+</div>
+
+<canvas id="bgCanvas"></canvas>
+
+<script>
+const consent=document.getElementById('consent');
+const acceptBtn=document.getElementById('accept');
+const declineBtn=document.getElementById('decline');
+window.onload=()=>{
+    setTimeout(()=>{consent.classList.add('show');},500);
+    initCanvas();
+};
+acceptBtn.onclick=declineBtn.onclick=()=>consent.style.display='none';
+
+const editBtn=document.getElementById('editBtn');
+const editorPanel=document.getElementById('editorPanel');
+editBtn.addEventListener('click',()=>{editorPanel.classList.toggle('show');});
+const resetBtn=document.getElementById('resetBtn');
+resetBtn.addEventListener('click',()=>{
+    document.getElementById('bgColor1').value="#323232";
+    document.getElementById('bgColor2').value="#000000";
+    document.getElementById('particleColor1').value="#aaaaaa";
+    document.getElementById('particleColor2').value="#555555";
+    updateColors();
+});
+
+// CANVAS I KULKI
+const canvas=document.getElementById('bgCanvas');
+const ctx=canvas.getContext('2d');
+let particles=[];
+let mouse={x:0,y:0,down:false};
+canvas.addEventListener('mousedown',e=>{mouse.down=true;mouse.x=e.clientX;mouse.y=e.clientY;});
+canvas.addEventListener('mousemove',e=>{if(mouse.down){mouse.x=e.clientX;mouse.y=e.clientY;}});
+canvas.addEventListener('mouseup',e=>{mouse.down=false;});
+
+function updateColors(){
+    bgColor1=document.getElementById('bgColor1').value;
+    bgColor2=document.getElementById('bgColor2').value;
+    particleColor1=document.getElementById('particleColor1').value;
+    particleColor2=document.getElementById('particleColor2').value;
+    particles.forEach((p,i)=>{p.color=i%2===0? particleColor1 : particleColor2;});
+}
+
+let bgColor1="#323232", bgColor2="#000000";
+let particleColor1="#aaaaaa", particleColor2="#555555";
+
+class Particle{
+    constructor(x,y,r){
+        this.x=x; this.y=y; this.radius=r;
+        this.angle=Math.random()*Math.PI*2;
+        this.speed=0.5+Math.random()*1.5; 
+        this.offsetAngle=Math.random()*Math.PI*2; 
+        this.offsetRadius=10+Math.random()*10; 
+        this.offsetSpeed=0.05+Math.random()*0.05;
+        this.color=Math.random()>0.5?particleColor1:particleColor2;
+    }
+    draw(){ctx.beginPath();ctx.arc(this.x,this.y,this.radius,0,Math.PI*2);ctx.fillStyle=this.color;ctx.fill();}
+    update(){
+        if(mouse.down){
+            const dx=mouse.x-this.x;
+            const dy=mouse.y-this.y;
+            const dist=Math.sqrt(dx*dx+dy*dy);
+            if(dist>1){this.vx=(dx/dist)*1; this.vy=(dy/dist)*1;}
+            else{this.offsetAngle+=this.offsetSpeed; this.vx=Math.cos(this.offsetAngle)*0.5; this.vy=Math.sin(this.offsetAngle)*0.5;}
+        } else {
+            this.angle+=(Math.random()-0.5)*0.02;
+            this.vx=Math.cos(this.angle)*this.speed;
+            this.vy=Math.sin(this.angle)*this.speed;
+        }
+        this.x+=this.vx;
+        this.y+=this.vy;
+        if(this.x+this.radius>canvas.width){this.x=canvas.width-this.radius;this.angle=Math.PI-this.angle;}
+        if(this.x-this.radius<0){this.x=this.radius;this.angle=Math.PI-this.angle;}
+        if(this.y+this.radius>canvas.height){this.y=canvas.height-this.radius;this.angle=-this.angle;}
+        if(this.y-this.radius<0){this.y=this.radius;this.angle=-this.angle;}
+        this.draw();
+    }
+}
+
+function drawBackground(){
+    let grad = ctx.createLinearGradient(0,0,canvas.width,canvas.height);
+    grad.addColorStop(0,bgColor1);
+    grad.addColorStop(1,bgColor2);
+    ctx.fillStyle=grad;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+
+function initCanvas(){
+    canvas.width=window.innerWidth;
+    canvas.height=window.innerHeight;
+    particles=[];
+    for(let i=0;i<30;i++){
+        let r=20+Math.random()*20;
+        let x=Math.random()*(canvas.width-2*r)+r;
+        let y=Math.random()*(canvas.height-2*r)+r;
+        particles.push(new Particle(x,y,r));
+    }
+}
+
+function animate(){
+    drawBackground();
+    particles.forEach(p=>p.update());
+    requestAnimationFrame(animate);
+}
+// Kliknięcie poza panelem chowa panel
+document.addEventListener('click', (e) => {
+    if (!editorPanel.contains(e.target) && e.target !== editBtn) {
+        editorPanel.classList.remove('show');
+    }
+});
+
+window.addEventListener('resize',initCanvas);
+initCanvas();
+animate();
+</script>
+</body>
+</html>
